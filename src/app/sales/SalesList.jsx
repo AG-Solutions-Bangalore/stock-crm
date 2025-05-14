@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
@@ -32,17 +32,41 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import axios from "axios";
-import { ChevronDown, Edit, Search, SquarePlus, View } from "lucide-react";
-import { useState } from "react";
+import {
+  ChevronDown,
+  Edit,
+  Search,
+  SquarePlus,
+  Trash2,
+  View,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { navigateTOSalesEdit, navigateTOSalesView, SALES_LIST } from "@/api";
+import {
+  fetchSalesById,
+  navigateTOSalesEdit,
+  navigateTOSalesView,
+  SALES_LIST,
+} from "@/api";
+import { encryptId } from "@/components/common/Encryption";
 import Loader from "@/components/loader/Loader";
-import { ButtonConfig } from "@/config/ButtonConfig";
-import moment from "moment";
 import StatusToggle from "@/components/toggle/StatusToggle";
-// import CreateItem from "./CreateItem";
-// import EditItem from "./EditItem";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import BASE_URL from "@/config/BaseUrl";
+import { ButtonConfig } from "@/config/ButtonConfig";
+import { useToast } from "@/hooks/use-toast";
+import moment from "moment";
+import { RiWhatsappFill } from "react-icons/ri";
 
 const SalesList = () => {
   const {
@@ -62,59 +86,206 @@ const SalesList = () => {
   });
 
   // State for table management
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState(null);
   const [sorting, setSorting] = useState([]);
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const UserId = localStorage.getItem("userType");
+  const { toast } = useToast();
+  const whatsapp = localStorage.getItem("whatsapp-number");
+  const queryClient = useQueryClient();
+  const [selectedDate, setSelectedDate] = useState(
+    moment().format("YYYY-MM-DD")
+  );
 
-  // Define columns for the table
+  const handleDeleteRow = (productId) => {
+    setDeleteItemId(productId);
+    setDeleteConfirmOpen(true);
+  };
+  const confirmDelete = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.delete(
+        `${BASE_URL}/api/sales/${deleteItemId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = response.data;
+
+      if (data.code === 200) {
+        toast({
+          title: "Success",
+          description: data.msg,
+        });
+        refetch();
+      } else if (data.code === 400) {
+        toast({
+          title: "Duplicate Entry",
+          description: data.msg,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.msg || "Something went wrong.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Unexpected Error",
+        description:
+          error?.response?.data?.msg ||
+          error.message ||
+          "Something unexpected happened.",
+        variant: "destructive",
+      });
+      console.error("Failed to delete product:", error);
+    } finally {
+      setDeleteConfirmOpen(false);
+      setDeleteItemId(null);
+    }
+  };
+  const handleFetchSalesById = async (salesId) => {
+    try {
+      const data = await queryClient.fetchQuery({
+        queryKey: ["salesByid", salesId],
+        queryFn: () => fetchSalesById(salesId),
+      });
+
+      if (data?.sales && data?.salesSub) {
+        handleSendWhatsApp(data.sales, data.salesSub);
+      } else {
+        console.error("Incomplete data received");
+      }
+    } catch (error) {
+      console.error("Failed to fetch purchase data or send WhatsApp:", error);
+    }
+  };
+  const handleSendWhatsApp = (sales, salesSub) => {
+    const {
+      sales_ref_no,
+      sales_date,
+      sales_buyer_name,
+      sales_buyer_city,
+      sales_vehicle_no,
+    } = sales;
+    const salesNo = sales_ref_no?.split("-").pop();
+
+    // const itemLine = salesSub.map((item) => {
+    //   const size = item.item_size.padEnd(10, " ");
+    //   const box = item.sales_sub_box.toString().padStart(4, " ");
+    //   return `${size} ${box}`;
+    // });
+
+    // const itemLines = salesSub.map((item) => {
+    //   const name = item.item_name.padEnd(25, " ");
+    //   const qty = `(${item.item_category.replace(/\D/g, "")})`.padStart(6, " ");
+    //   return `${name}${qty}`;
+    // });
+    const itemLines = salesSub.map((item) => {
+      const name = item.item_name.padEnd(25, " ");
+      const box = `(${String(item.sales_sub_box).replace(/\D/g, "")})`.padStart(
+        4,
+        " "
+      );
+      return `${name}   ${box}`;
+    });
+
+    const totalQty = salesSub.reduce((sum, item) => {
+      const qty = parseInt(item.sales_sub_box, 10) || 0;
+      return sum + qty;
+    }, 0);
+
+    const message = `=== DispatchList ===
+  No.        : ${salesNo}
+  Date       : ${moment(sales_date).format("DD-MM-YYYY")}
+  Party      : ${sales_buyer_name}
+  City       : ${sales_buyer_city}
+  VEHICLE NO : ${sales_vehicle_no}
+  ======================
+  Product    [SIZE]   (QTY)
+  ======================
+${itemLines.map((line) => "  " + line).join("\n")}
+  ======================
+  *Total QTY: ${totalQty}*
+  ======================`;
+
+    const phoneNumber = `${whatsapp}`;
+    // const phoneNumber = "919360485526";
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    window.open(whatsappUrl, "_blank");
+  };
   const columns = [
     {
       accessorKey: "index",
       header: "Sl No",
+      id: "Sl No",
       cell: ({ row }) => <div>{row.index + 1}</div>,
     },
     {
       accessorKey: "sales_date",
       header: "Date",
+      id: "Date",
       cell: ({ row }) => {
-        const date = row.getValue("sales_date");
+        const date = row.original.sales_date;
         return moment(date).format("DD-MMM-YYYY");
       },
     },
-
     {
       accessorKey: "sales_buyer_name",
       header: "Buyer Name",
-      cell: ({ row }) => <div>{row.getValue("sales_buyer_name")}</div>,
+      id: "Buyer Name",
+      cell: ({ row }) => <div>{row.original.sales_buyer_name}</div>,
     },
     {
       accessorKey: "sales_ref_no",
       header: "Ref No",
-      cell: ({ row }) => <div>{row.getValue("sales_ref_no")}</div>,
+      id: "Ref No",
+      cell: ({ row }) => <div>{row.original.sales_ref_no}</div>,
     },
     {
       accessorKey: "sales_vehicle_no",
       header: "Vehicle No",
-      cell: ({ row }) => <div>{row.getValue("sales_vehicle_no")}</div>,
+      id: "Vehicle No",
+      cell: ({ row }) => <div>{row.original.sales_vehicle_no}</div>,
     },
+    ...(UserId == 3
+      ? [
+          {
+            accessorKey: "branch_name",
+            header: "Branch Name",
+            id: "Branch Name",
 
+            cell: ({ row }) => <div>{row.original.branch_name}</div>,
+          },
+        ]
+      : []),
     {
       accessorKey: "sales_status",
       header: "Status",
+      id: "Status",
       cell: ({ row }) => {
-        const status = row.getValue("sales_status");
+        const status = row.original.sales_status;
         const statusId = row.original.id;
         return (
           <StatusToggle
-          initialStatus={status}
-          teamId={statusId}
-          onStatusChange={() => {
-            refetch();
-          }}
-        />
+            initialStatus={status}
+            teamId={statusId}
+            onStatusChange={() => {
+              refetch();
+            }}
+          />
         );
       },
     },
@@ -126,24 +297,26 @@ const SalesList = () => {
 
         return (
           <div className="flex flex-row space-x-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      navigateTOSalesEdit(navigate, salesId);
-                    }}
-                  >
-                    <Edit />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit Dispatch</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {UserId != 3 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        navigateTOSalesEdit(navigate, salesId);
+                      }}
+                    >
+                      <Edit />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Edit Dispatch</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
             <TooltipProvider>
               <Tooltip>
@@ -163,18 +336,65 @@ const SalesList = () => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {UserId != 1 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleDeleteRow(salesId)}
+                      className="text-red-500"
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Delete Purchase</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleFetchSalesById(encryptId(salesId))}
+                    className="text-green-500"
+                    type="button"
+                  >
+                    <RiWhatsappFill className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Whatsapp Dispatch</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         );
       },
     },
   ];
-  const filteredItems =
-    sales?.filter((item) =>
-      item.sales_buyer_name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
-  // Create the table instance
+
+  const filteredItem = useMemo(() => {
+    if (!sales) return [];
+
+    return sales.filter((item) => {
+      const itemDate = moment(item.sales_date).format("YYYY-MM-DD");
+      const matchesDate = !selectedDate || itemDate === selectedDate;
+      const matchesSearch = item.sales_buyer_name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+      return matchesDate && matchesSearch;
+    });
+  }, [sales, selectedDate, searchQuery]);
+
   const table = useReactTable({
-    data: sales || [],
+    data: filteredItem || [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -192,7 +412,7 @@ const SalesList = () => {
     },
     initialState: {
       pagination: {
-        pageSize: 7,
+        pageSize: 20,
       },
     },
   });
@@ -231,21 +451,22 @@ const SalesList = () => {
   return (
     <Page>
       <div className="w-full p-0 md:p-4 grid grid-cols-1">
-
         <div className="sm:hidden">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-xl md:text-2xl text-gray-800 font-medium">
               Dispatch List
             </h1>
-            <div>
-              <Button
-                variant="default"
-                className={`md:ml-2 bg-yellow-400 hover:bg-yellow-600 text-black rounded-l-full`}
-                onClick={() => navigate("/dispatch/create")}
-              >
-                <SquarePlus className="h-4 w-4 " /> Dispatch
-              </Button>
-            </div>
+            {UserId != 3 && (
+              <div>
+                <Button
+                  variant="default"
+                  className={`md:ml-2 bg-yellow-400 hover:bg-yellow-600 text-black rounded-l-full`}
+                  onClick={() => navigate("/dispatch/create")}
+                >
+                  <SquarePlus className="h-4 w-4 " /> Dispatch
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center py-4 gap-2">
@@ -259,11 +480,17 @@ const SalesList = () => {
                 className="pl-8 bg-gray-50 border-gray-200 focus:border-gray-300 focus:ring-gray-200 w-full"
               />
             </div>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="pl-8 bg-gray-50 border-gray-200 focus:border-gray-300 focus:ring-gray-200 w-full"
+            />
           </div>
 
           <div className="space-y-3">
-            {filteredItems.length > 0 ? (
-              filteredItems.map((item, index) => (
+            {filteredItem.length > 0 ? (
+              filteredItem.map((item, index) => (
                 <div
                   key={item.id}
                   onClick={() => {
@@ -291,25 +518,49 @@ const SalesList = () => {
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
-                  
-                            <StatusToggle
-                                    initialStatus={item.sales_status}
-                                    teamId={item.id}
-                                    onStatusChange={() => {
-                                      refetch();
-                                    }}
-                                  />
+                          <StatusToggle
+                            initialStatus={item.sales_status}
+                            teamId={item.id}
+                            onStatusChange={() => {
+                              refetch();
+                            }}
+                          />
                         </span>
+                        {UserId != 3 && (
+                          <button
+                            className={`px-2 py-1 bg-yellow-400 hover:bg-yellow-600 rounded-lg text-black text-xs`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigateTOSalesEdit(navigate, item.id);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {UserId != 1 && (
+                          <button
+                            variant="ghost"
+                            type="button"
+                            onClick={() => {
+                              e.stopPropagation();
+                              handleDeleteRow(item.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        )}
                         <button
-                          className={`px-2 py-1 bg-yellow-400 hover:bg-yellow-600 rounded-lg text-black text-xs`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigateTOSalesEdit(navigate, item.id);
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFetchSalesById(encryptId(item.id));
                           }}
+                          className="text-green-500"
+                          type="button"
                         >
-                          <Edit className="w-4 h-4" />
+                          <RiWhatsappFill className="h-4 w-4" />
                         </button>
-                        {/* <EditItem ItemId={} /> */}
                       </div>
                     </div>
 
@@ -392,6 +643,37 @@ const SalesList = () => {
                           </span>
                         </div>
                       )}
+                      {UserId == 3 && (
+                        <>
+                          {item.branch_name && (
+                            <div className="inline-flex items-center bg-gray-100 rounded-full px-2 py-1">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="10"
+                                height="10"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-gray-600 mr-1"
+                              >
+                                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                                <path d="M13 5v2" />
+                                <path d="M13 17v2" />
+                                <path d="M13 11v2" />
+                              </svg>
+                              <span className="text-xs text-gray-700">
+                                <span className="text-[10px]">
+                                  Branch Name:
+                                </span>
+                                {item.branch_name}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -403,8 +685,6 @@ const SalesList = () => {
             )}
           </div>
         </div>
-
-
 
         <div className="hidden sm:block">
           <div className="flex text-left text-2xl text-gray-800 font-[400]">
@@ -424,6 +704,12 @@ const SalesList = () => {
 
             {/* Dropdown Menu & Sales Button */}
             <div className="flex flex-col md:flex-row md:ml-auto gap-2 w-full md:w-auto">
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="pl-8 bg-gray-50 border-gray-200 focus:border-gray-300 focus:ring-gray-200 w-full"
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full md:w-auto">
@@ -449,14 +735,18 @@ const SalesList = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Sales Button */}
-              <Button
-                variant="default"
-                className={`w-full md:w-auto ${ButtonConfig.backgroundColor} ${ButtonConfig.hoverBackgroundColor} ${ButtonConfig.textColor}`}
-                onClick={() => navigate("/dispatch/create")}
-              >
-                <SquarePlus className="h-4 w-4 mr-2" /> Dispatch
-              </Button>
+              {UserId != 3 && (
+                <>
+                  {" "}
+                  <Button
+                    variant="default"
+                    className={`w-full md:w-auto ${ButtonConfig.backgroundColor} ${ButtonConfig.hoverBackgroundColor} ${ButtonConfig.textColor}`}
+                    onClick={() => navigate("/dispatch/create")}
+                  >
+                    <SquarePlus className="h-4 w-4 mr-2" /> Dispatch
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -541,6 +831,26 @@ const SalesList = () => {
           </div>
         </div>
       </div>
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              disapatch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={`${ButtonConfig.backgroundColor}  ${ButtonConfig.textColor} text-black hover:bg-red-600`}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Page>
   );
 };

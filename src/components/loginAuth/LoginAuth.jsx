@@ -13,9 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { ContextPanel } from "@/lib/ContextPanel";
 import BASE_URL from "@/config/BaseUrl";
-import logo from "../../assets/logo.png";
 import { ButtonConfig } from "@/config/ButtonConfig";
 export default function LoginAuth() {
   const [email, setEmail] = useState("");
@@ -77,6 +75,11 @@ export default function LoginAuth() {
         localStorage.setItem("userType", UserInfo.user.user_type);
         localStorage.setItem("email", UserInfo.user.email);
         localStorage.setItem("token-expire-time", UserInfo.token_expires_at);
+        localStorage.setItem(
+          "whatsapp-number",
+          res?.data?.branch?.branch_whatsapp
+        );
+        localStorage.setItem("version", res?.data?.version?.version_panel);
         const redirectPath = window.innerWidth < 768 ? "/home" : "/stock-view";
         console.log(`✅ Login successful! Redirecting to ${redirectPath}...`);
         navigate(redirectPath);
@@ -118,17 +121,44 @@ export default function LoginAuth() {
           className={`w-72 md:w-80 max-w-md ${ButtonConfig.loginBackground} ${ButtonConfig.loginText}`}
         >
           <CardHeader>
-          <div className="font-semibold flex items-center space-x-2">
-            <div className="flex items-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-yellow-800">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-yellow-900 leading-tight">Stock</span>
-            </div>
+            <div className="font-semibold flex items-center space-x-2">
+              <div className="flex items-center">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="text-yellow-800"
+                >
+                  <path
+                    d="M12 2L2 7L12 12L22 7L12 2Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M2 17L12 22L22 17"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M2 12L12 17L22 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-yellow-900 leading-tight">
+                  Stock
+                </span>
+              </div>
             </div>
             <CardTitle
               className={`text-2xl text-center${ButtonConfig.loginText}`}
