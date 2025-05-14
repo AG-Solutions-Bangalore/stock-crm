@@ -7,6 +7,6 @@ export const ButtonConfig = {
   cardLabel: "text-black",
   tableHeader: "bg-yellow-200",
   tableLabel: "text-black",
-  loginBackground: "bg-white",
-  loginText: "text-black",
+  loginBackground: "bg-black",
+  loginText: "text-white",
 };

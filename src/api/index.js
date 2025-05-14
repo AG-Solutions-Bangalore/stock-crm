@@ -1,7 +1,9 @@
 import { decryptId, encryptId } from "@/components/common/Encryption";
 import BASE_URL from "@/config/BaseUrl";
 import axios from "axios";
-
+//PROFILE
+export const PROFILE = `${BASE_URL}/api/fetch-profile`;
+export const EDIT_PROFILE = `${BASE_URL}/api/updateprofile`;
 // PURCHASE
 export const PURCHASE_LIST = `${BASE_URL}/api/purchases-list`;
 export const PURCHASE_EDIT_LIST = `${BASE_URL}/api/purchases`;
@@ -23,14 +25,25 @@ export const BUYER_LIST = `${BASE_URL}/api/buyers-list`;
 export const BUYER_EDIT_GET = `${BASE_URL}/api/buyers`;
 export const BUYER_EDIT_SUMBIT = `${BASE_URL}/api/buyers`;
 export const BUYER_CREATE = `${BASE_URL}/api/buyers`;
+//MASTER-BRANCH
+export const BRANCH_LIST_FETCH = `${BASE_URL}/api/fetch-branch`;
+export const BRANCH_LIST = `${BASE_URL}/api/branch-list`;
+export const BRANCH_CREATE = `${BASE_URL}/api/createbranch`;
+export const BRANCH_EDIT_GET = `${BASE_URL}/api/fetch-branch-by-id`;
+export const BRANCH_EDIT_SUMBIT = `${BASE_URL}/api/updatebranch`;
+//MASTER-TEAM
+export const TEAM_LIST = `${BASE_URL}/api/fetch-team-list`;
+export const CREATE_TEAM = `${BASE_URL}/api/createteam`;
+export const UPDATE_TEAM_STATUS = `${BASE_URL}/api/updateteamstatus`;
 //REPORT STOCK -BUYER
 export const BUYER_REPORT = `${BASE_URL}/api/report-buyer-data`;
 export const BUYER_DOWNLOAD = `${BASE_URL}/api/download-buyer-data`;
 export const STOCK_REPORT = `${BASE_URL}/api/stock`;
 export const SINGLE_ITEM_STOCK_REPORT = `${BASE_URL}/api/item-stock`;
+export const PURCHASE_REPORT = `${BASE_URL}/api/report-purchases-data`;
+export const SALES_REPORT = `${BASE_URL}/api/report-sales-data`;
 
-
-// ROUTE CONFIGURATION 
+// ROUTE CONFIGURATION
 export const ROUTES = {
   PURCHASE_EDIT: (id) => `/purchase/edit/${encryptId(id)}`,
   SALES_EDIT: (id) => `/dispatch/edit/${encryptId(id)}`,
@@ -58,7 +71,7 @@ export const fetchPurchaseById = async (encryptedId) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("res data", response.data);
+    // console.log("res data", response.data);
     return response.data;
   } catch (error) {
     throw new Error(
@@ -77,7 +90,7 @@ export const fetchSalesById = async (encryptedId) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("res data", response.data);
+    // console.log("res data", response.data);
     return response.data;
   } catch (error) {
     throw new Error(
@@ -85,7 +98,6 @@ export const fetchSalesById = async (encryptedId) => {
     );
   }
 };
-
 
 export const updatePurchaseEdit = async (encryptedId, data) => {
   try {
@@ -122,21 +134,14 @@ export const updateSalesEdit = async (encryptedId, data) => {
 
     const requestData = data.data || data;
 
-    const response = await axios.put(
-      `${SALES_EDIT_LIST}/${id}`,
-      requestData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await axios.put(`${SALES_EDIT_LIST}/${id}`, requestData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }
 };
-
-
-
