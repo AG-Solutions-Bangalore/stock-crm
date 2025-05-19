@@ -221,7 +221,7 @@ const DispatchReport = () => {
                         {moment(transaction?.sales_date).format("DD MMM YYYY")}
                       </td>
                       <td className="border border-gray-300 px-2 py-1">
-                        {transaction?.sales_buyer_name}
+                        {transaction?.buyer_name}
                       </td>
 
                       <td className="border border-gray-300 px-2 py-1 text-right">
