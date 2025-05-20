@@ -102,6 +102,7 @@ const CreatePurchase = () => {
     purchase_vehicle_no: "",
     purchase_remark: "",
   });
+  console.log(formData);
   const [invoiceData, setInvoiceData] = useState([
     {
       purchase_sub_category: "",
@@ -206,7 +207,7 @@ const CreatePurchase = () => {
       value = selectedValue;
     }
 
-    // console.log("Selected Value:", value);
+    console.log("Selected Value:", value);
 
     const updatedData = [...invoiceData];
 
@@ -252,7 +253,7 @@ const CreatePurchase = () => {
 
   const handleInputChange = (e, field) => {
     const value = e.target ? e.target.value : e;
-    // console.log(value);
+    console.log(value);
     let updatedFormData = { ...formData, [field]: value };
 
     if (field === "purchase_buyer_name") {
@@ -289,12 +290,10 @@ const CreatePurchase = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log(formData, "1");
       const validatedData = contractFormSchema.parse({
         ...formData,
         purchase_product_data: invoiceData,
       });
-      console.log(formData, "2");
 
       createBranchMutation.mutate(validatedData);
     } catch (error) {
