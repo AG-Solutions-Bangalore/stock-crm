@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import BASE_URL from "@/config/BaseUrl";
 import { ButtonConfig } from "@/config/ButtonConfig";
+import companyname from "../../json/company.json";
+import Logo from "@/json/logo";
 export default function LoginAuth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -116,14 +118,13 @@ export default function LoginAuth() {
           transition: { duration: 0.3, ease: "easeInOut" },
         }}
       >
-        {/* <Card className=`w-72 md:w-80 max-w-md ${ButtonConfig.loginBackground} ${ButtonConfig.loginText}`> */}
         <Card
           className={`w-72 md:w-80 max-w-md ${ButtonConfig.loginBackground} ${ButtonConfig.loginText}`}
         >
           <CardHeader>
             <div className="font-semibold flex items-center space-x-2">
               <div className="flex items-center">
-                <svg
+                {/* <svg
                   width="24"
                   height="24"
                   viewBox="0 0 24 24"
@@ -152,11 +153,13 @@ export default function LoginAuth() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                </svg>
+                </svg> */}
+                {/* <img src={logo} alt="Logo" className="w-8 h-8" /> */}
+                <Logo />
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-yellow-900 leading-tight">
-                  Stock
+                  {companyname?.CompanyName}
                 </span>
               </div>
             </div>

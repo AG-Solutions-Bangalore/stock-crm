@@ -28,6 +28,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavMainUser } from "./nav-main-user";
+import companyname from "../json/company.json";
 
 export function AppSidebar({ ...props }) {
   const nameL = localStorage.getItem("name");
@@ -41,20 +42,20 @@ export function AppSidebar({ ...props }) {
     },
     teams: [
       {
-        name: `Stock`,
-        logo: GalleryVerticalEnd,
-        plan: "",
+        name: `${companyname?.CompanyName}`,
+        // logo: <Logo />,
+        // plan: "Startup",
       },
-      {
-        name: "Acme Corp.",
-        logo: AudioWaveform,
-        plan: "Startup",
-      },
-      {
-        name: "Evil Corp.",
-        logo: Command,
-        plan: "Free",
-      },
+      // {
+      //   name: "Acme Corp.",
+      //   logo: `${companylogo}`,
+      //   plan: "Startup",
+      // },
+      // {
+      //   name: "Evil Corp.",
+      //   logo: `${companylogo}`,
+      //   plan: "Free",
+      // },
     ],
     navMain: [
       {

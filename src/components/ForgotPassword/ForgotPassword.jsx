@@ -15,6 +15,9 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import companyname from "../../json/company.json";
+import Logo from "@/json/logo";
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [username, setUserName] = useState("");
@@ -117,12 +120,10 @@ export default function ForgotPassword() {
           className={`w-72 md:w-80 max-w-md ${ButtonConfig.loginBackground} ${ButtonConfig.loginText}`}
         >
           <CardHeader className="space-y-1">
-            <CardTitle
-              className={`text-2xl text-center${ButtonConfig.loginText}`}
-            >
-              <div className="font-semibold flex items-center space-x-2">
-                <div className="flex items-center">
-                  <svg
+            <div className="font-semibold flex items-center space-x-2">
+              <div className="flex items-center">
+                {/* <svg
+                  
                     width="24"
                     height="24"
                     viewBox="0 0 24 24"
@@ -151,14 +152,18 @@ export default function ForgotPassword() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-yellow-900 leading-tight">
-                    Stock
-                  </span>
-                </div>
+                  </svg> */}
+                <Logo />
               </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-yellow-900 leading-tight">
+                  {companyname?.CompanyName}
+                </span>
+              </div>
+            </div>
+            <CardTitle
+              className={`text-2xl text-center${ButtonConfig.loginText}`}
+            >
               Forgot Password
             </CardTitle>
           </CardHeader>
